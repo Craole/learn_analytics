@@ -10,12 +10,12 @@
 set -o allexport
 
 #@ Set the working directory to the directory containing the script
-workspace="$(dirname "$(realpath "$0")")"
+workspace="$PWD"
 
 #@ Load environment variables from .env file
-env="$workspace/.env"
-if [ -f "$env" ]; then
-  bat "$env"
+dotenv="$workspace/.env"
+if [ -f "$dotenv" ]; then
+  . "$dotenv"
 else
   printf "Please create a .env file with the following variables:\n"
   printf "  host, port, user, db\n"
