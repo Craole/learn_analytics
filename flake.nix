@@ -19,7 +19,6 @@
         })
       ];
       pkgs = import nixpkgs {inherit system overlays;};
-
       pythonPackages = pkgs.python311.withPackages (ps: [
         ps.black
         ps.pandas
@@ -41,7 +40,7 @@
           pythonPackages
 
           #/> PostgreSQL <\#
-          postgresql
+          postgresql_15
 
           #/> Tools <\#
           exa
@@ -71,11 +70,26 @@
             "run --quiet --"
           '
 
+          #/> Functions <\#
+          init_rust() {
+            [ -f Cargo.toml ] || cargo init
+          }
+
+          init_database() {
+            [ -d .data ] ||
+              pg_ctl --pgdata .data initdb --silent
+          }
+
+          show_info() {
+            rustc -vV
+            python --version
+            psql --version
+          }
+
           #/> Autostart <\#
-          [ -f Cargo.toml ] || cargo init
-          rustc -vV
-          python --version
-          psql --version
+          show_info
+          init_rust
+          init_database
         '';
       };
     });
