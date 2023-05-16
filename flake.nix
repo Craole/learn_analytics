@@ -1,5 +1,5 @@
 {
-  description = "Rust Nightly Development Environment";
+  description = "Data Analytics Portfolio Flake";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
@@ -44,52 +44,11 @@
 
           #/> Tools <\#
           exa
-          fd
           ripgrep
         ];
-
         shellHook = ''
-          #/> Aliases <\#
-          alias ls='exa \
-            --icons \
-            --color-scale \
-            --header \
-            --no-user \
-            --git \
-            --group-directories-first \
-            --all \
-            --long \
-            --sort=.name
-          '
-          alias cI='cargo install'
-          alias cR='cargo run --quiet'
-          alias cW='cargo watch \
-            --quiet \
-            --clear \
-            --exec \
-            "run --quiet --"
-          '
-
-          #/> Functions <\#
-          init_rust() {
-            [ -f Cargo.toml ] || cargo init
-          }
-
-          init_database() {
-            [ -d .data ] ||
-              pg_ctl --pgdata .data initdb --silent
-          }
-
-          show_info() {
-            rustc -vV
-            python --version
-            psql --version
-          }
-
-          #/> Autostart <\#
-          show_info
-          init_rust
-          init_database
+          export workspace="./."
+          source $workspace/bin/init_env
         '';
       };
     });

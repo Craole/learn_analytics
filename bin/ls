@@ -1,0 +1,14 @@
+#!/bin/sh
+
+exa \
+  --icons \
+  --all \
+  --long \
+  --color-scale \
+  --no-user \
+  --git \
+  --group-directories-first \
+  --sort=.name \
+  --time 'modified' \
+  --header \
+  "$@"

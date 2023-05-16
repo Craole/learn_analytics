@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#@ Allow external access to environment variables
+set -o allexport
+
+#@ Validate workspace directory set
+[ "$workspace" ] || {
+  printf "🟥 Undefined variable: workspace"
+  exit 1
+}
+
+#@ Declare variables
+bin="$workspace/bin"
+log="$workspace/log"
+PGDATA=".data"
+PGLOG="$log/PostgreSQL.log"
+PGPORT="5333"
+
+#@ Prioritize local scripts ahead of system ones
+[ -d "$bin" ] && {
+  PATH="$bin:$PATH"
+  find "$bin" -type f ! -executable -exec chmod +x {} \;
+}
+
+#@ Initialize the database
+[ -d "$PGDATA" ] || pg_ctl initdb
+PGstart
+
+#@ Disable external access to environment variables
+set +o allexport
