@@ -1,6 +1,0 @@
-#!/bin/sh
-
-pg_ctl \
-  --log "$PGLOG" \
-  --mode "smart" \
-  stop

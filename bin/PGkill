@@ -1,5 +1,0 @@
-#!/bin/sh
-
-PGstop
-rm -rf "$PGDATA"
-killall postgres

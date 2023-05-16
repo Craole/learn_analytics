@@ -1,0 +1,107 @@
+#!/bin/sh
+
+#@ Initialize the PostgreSQL data environment
+init_psql_data() {
+  [ -d "$PGDATA" ] || pg_ctl initdb
+}
+
+#@ Start the PostgreSQL server if inactive
+start_psql_server() {
+  pg_isready --quiet ||
+    pg_ctl \
+      --log "$PGLOG" \
+      --options "--unix_socket_directories='$workspace'" \
+      start
+}
+
+#@ Stop the PostgreSQL server if active
+stop_psql_server() {
+  pg_ctl \
+    --log "$PGLOG" \
+    --mode "smart" \
+    stop
+}
+
+#@ Stop the PostgreSQL server and remove data and log files
+reset_psql_server() {
+  stop_psql_server
+  killall postgres
+  rm -rf "$PGDATA" "$PGLOG"
+}
+
+#@ Print script usage instructions
+print_usage() {
+  printf "Usage: %s [option]\n" "$0"
+  printf "Options:\n"
+  printf "  -i, --init    : Initialize the PostgreSQL data environment\n"
+  printf "  -s, --start   : Start the PostgreSQL server\n"
+  printf "  -x, --stop    : Stop the PostgreSQL server\n"
+  printf "  -r, --reset   : Stop the PostgreSQL server and remove data and log files\n"
+  printf "  -h, --help    : Print this usage information\n"
+}
+
+#@ Prompt the user to select between starting and stopping
+prompt_start_stop() {
+  printf "Please select whether to start or stop the PostgreSQL server.\n"
+  printf "  1. Start the PostgreSQL server\n"
+  printf "  2. Stop the PostgreSQL server\n"
+  read -r choice
+  case "$choice" in
+  1)
+    start_psql_server
+    ;;
+  2)
+    stop_psql_server
+    ;;
+  *)
+    printf "Invalid choice. Please enter 1 or 2.\n"
+    ;;
+  esac
+}
+
+# Main script logic
+main() {
+  #@ Check if the script is run with at least one option
+  if [ $# -eq 0 ]; then
+    print_usage
+    exit 0
+  fi
+
+  #@ Initialize check variables
+  unset has_init has_start has_stop has_reset
+
+  #@ Parse command line options
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    -i | --init) has_init=true ;;
+    -s | --start) has_start=true ;;
+    -x | --stop) has_stop=true ;;
+    -r | --reset) has_reset=true ;;
+    -h | --help) print_usage && exit 0 ;;
+    *)
+      printf "Invalid option: %s\n" "$1"
+      print_usage
+      exit 1
+      ;;
+    esac
+    shift
+  done
+
+  #@ Perform actions based on selected options
+  if "$has_start" && "$has_stop"; then
+    prompt_start_stop
+  elif "$has_reset"; then
+    reset_psql_server
+    init_psql_data
+    start_psql_server
+  elif "$has_init" && "$has_start"; then
+    init_psql_data
+    start_psql_server
+  elif $has_init; then
+    init_psql_data
+  elif "$has_start"; then
+    start_psql_server
+  fi
+}
+
+main "$@"

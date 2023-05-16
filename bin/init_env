@@ -14,7 +14,8 @@ bin="$workspace/bin"
 log="$workspace/log"
 PGDATA=".data"
 PGLOG="$log/PostgreSQL.log"
-PGPORT="5333"
+PGHOST="localhost"
+PGPORT="5432"
 
 #@ Prioritize local scripts ahead of system ones
 [ -d "$bin" ] && {
@@ -23,8 +24,7 @@ PGPORT="5333"
 }
 
 #@ Initialize the database
-[ -d "$PGDATA" ] || pg_ctl initdb
-PGstart
+pgSQL --init --start
 
 #@ Disable external access to environment variables
 set +o allexport
