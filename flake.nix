@@ -48,6 +48,7 @@
           ripgrep
         ];
         shellHook = ''
+          envup() { [ -f "$workspace/.env" ] && . "$workspace/.env" ;}
           export workspace="./."
           source $workspace/bin/init_env
           cargo check

@@ -6,7 +6,7 @@ use sqlx::Row;
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().expect("Unable to load environment variables from .env file");
     let db_url =
-        std::env::var("DATABASE_URL_PRJ1").expect("Unable to read DATABASE_URL_PRJ1 env var");
+        std::env::var("DATABASE_URL").expect("Unable to read DATABASE_URL env var");
     let pool = sqlx::postgres::PgPool::connect(&db_url).await?;
 
     sqlx::migrate!("./migrations").run(&pool).await?;

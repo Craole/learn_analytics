@@ -10,7 +10,11 @@ set -o allexport
 }
 
 #@ Initialize variables
-[ -f "$workspace/.env" ] && . "$workspace/.env"
+alias envup='[ -f "$workspace/.env" ] && . "$workspace/.env"'
+# [ -f "$workspace/.env" ] && . "$workspace/.env"
+envup
+# echo "Updated Environment Variables"
+# echo "$POP"
 
 #@ Prioritize local scripts ahead of system ones
 [ -d "$bin" ] && {
