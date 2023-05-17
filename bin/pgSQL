@@ -40,6 +40,7 @@ print_usage() {
   printf "  -s, --start   />   Start the PostgreSQL server\n"
   printf "  -x, --stop    />   Stop the PostgreSQL server\n"
   printf "  -r, --reset   />   Stop the PostgreSQL server and remove data and log\n"
+  printf "  -l, --db      />   Load the database\n"
   printf "  -h, --help    />   Print this usage information\n"
 }
 
@@ -83,6 +84,7 @@ main() {
     -l | --db)
       load=true
       db="${2:-postgres}"
+      shift
       ;;
     -h | --help) print_usage && exit 0 ;;
     *)
