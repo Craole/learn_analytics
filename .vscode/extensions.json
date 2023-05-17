@@ -8,6 +8,7 @@
     "jscearcy.rust-doc-viewer",
     "vadimcn.vscode-lldb",
     "formulahendry.code-runner",
-    "tamasfe.even-better-toml"
+    "tamasfe.even-better-toml",
+    "cweijan.vscode-database-client2"
   ]
 }
