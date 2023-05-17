@@ -1,0 +1,27 @@
+#!/bin/sh
+# shellcheck disable=SC2154
+
+#@ Ensure all variables are set
+$file || exit 1
+$source || exit 1
+
+#@ Check if the file exists, if not extract it from source
+# Check if the file exists before attempting to download
+if [ ! -f "$file" ]; then
+  # Check if curl is available
+  if ! command -v curl >/dev/null; then
+    printf "Error: curl is required to download the source file.\nPlease install curl or download the file manually from %s.\n" "$source" >&2
+    exit 1
+  fi
+
+  # Download the file from the source
+  printf "Downloading %s...\n" "$source"
+  curl --location --output "$(basename "$source")" "$source"
+
+  # # Extract the sql file from the zip archive
+  # printf "Extracting sql file...\n"
+  # unzip -p "$(basename "$source")" world.sql >"$file"
+
+  # # Clean up the zip archive
+  # rm world.zip
+fi
