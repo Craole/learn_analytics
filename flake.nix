@@ -39,8 +39,9 @@
           #/> Python <\#
           pythonPackages
 
-          #/> PostgreSQL <\#
+          #/> SQL <\#
           postgresql_15
+          sqlx-cli
 
           #/> Tools <\#
           exa
@@ -49,6 +50,7 @@
         shellHook = ''
           export workspace="./."
           source $workspace/bin/init_env
+          cargo check
         '';
       };
     });

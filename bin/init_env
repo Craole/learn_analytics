@@ -9,13 +9,8 @@ set -o allexport
   exit 1
 }
 
-#@ Declare variables
-bin="$workspace/bin"
-log="$workspace/log"
-PGDATA=".data"
-PGLOG="$log/PostgreSQL.log"
-PGHOST="localhost"
-PGPORT="5432"
+#@ Initialize variables
+[ -f "$workspace/.env" ] && . "$workspace/.env"
 
 #@ Prioritize local scripts ahead of system ones
 [ -d "$bin" ] && {

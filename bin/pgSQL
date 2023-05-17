@@ -29,15 +29,18 @@ reset_psql_server() {
   rm -rf "$PGDATA" "$PGLOG"
 }
 
+#@ Enter the Postgres Environment
+load_psql_db() { psql --dbname "$db"; }
+
 #@ Print script usage instructions
 print_usage() {
   printf "Usage: %s [option]\n" "$0"
   printf "Options:\n"
-  printf "  -i, --init    : Initialize the PostgreSQL data environment\n"
-  printf "  -s, --start   : Start the PostgreSQL server\n"
-  printf "  -x, --stop    : Stop the PostgreSQL server\n"
-  printf "  -r, --reset   : Stop the PostgreSQL server and remove data and log files\n"
-  printf "  -h, --help    : Print this usage information\n"
+  printf "  -i, --init    />   Initialize the PostgreSQL data environment\n"
+  printf "  -s, --start   />   Start the PostgreSQL server\n"
+  printf "  -x, --stop    />   Stop the PostgreSQL server\n"
+  printf "  -r, --reset   />   Stop the PostgreSQL server and remove data and log\n"
+  printf "  -h, --help    />   Print this usage information\n"
 }
 
 #@ Prompt the user to select between starting and stopping
@@ -59,7 +62,7 @@ prompt_start_stop() {
   esac
 }
 
-# Main script logic
+#@ Execute script logic
 main() {
   #@ Check if the script is run with at least one option
   if [ $# -eq 0 ]; then
@@ -68,15 +71,19 @@ main() {
   fi
 
   #@ Initialize check variables
-  unset has_init has_start has_stop has_reset
+  unset init start stop reset
 
   #@ Parse command line options
   while [ $# -gt 0 ]; do
     case "$1" in
-    -i | --init) has_init=true ;;
-    -s | --start) has_start=true ;;
-    -x | --stop) has_stop=true ;;
-    -r | --reset) has_reset=true ;;
+    -i | --init) init=true ;;
+    -s | --start) start=true ;;
+    -x | --stop) stop=true ;;
+    -r | --reset) reset=true ;;
+    -l | --db)
+      load=true
+      db="${2:-postgres}"
+      ;;
     -h | --help) print_usage && exit 0 ;;
     *)
       printf "Invalid option: %s\n" "$1"
@@ -88,19 +95,21 @@ main() {
   done
 
   #@ Perform actions based on selected options
-  if "$has_start" && "$has_stop"; then
+  if [ "$start" ] && [ "$stop" ]; then
     prompt_start_stop
-  elif "$has_reset"; then
+  elif [ "$reset" ]; then
     reset_psql_server
     init_psql_data
     start_psql_server
-  elif "$has_init" && "$has_start"; then
+  elif [ "$init" ] && [ "$start" ]; then
     init_psql_data
     start_psql_server
-  elif $has_init; then
+  elif [ "$init" ]; then
     init_psql_data
-  elif "$has_start"; then
+  elif [ "$start" ]; then
     start_psql_server
+  elif [ "$load" ]; then
+    load_psql_db "$db"
   fi
 }
 
