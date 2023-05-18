@@ -1,20 +1,18 @@
-use std::error::Error;
-// use sqlx::Connection;
-use sqlx::Row;
+// mod load_env_vars;
+// use crate::env::load_env;
+// mod server;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
-    dotenv::dotenv().expect("Unable to load environment variables from .env file");
-    let db_url =
-        std::env::var("DATABASE_URL").expect("Unable to read DATABASE_URL env var");
-    let pool = sqlx::postgres::PgPool::connect(&db_url).await?;
+// mod load_env_vars;
 
-    sqlx::migrate!("./migrations").run(&pool).await?;
+mod server;
+mod load_env_vars;
 
-    let res = sqlx::query("SELECT 1 + 1 AS sum").fetch_one(&pool).await?;
+fn main() {
+    // load_env_vars::run();
+    // server::load_env_vars();
 
-    let sum: i32 = res.get("sum");
-    println!("1 + 1 = {}", sum);
-
-    Ok(())
+    // Call server::manage() or any other code you want to execute
+    server::manage();
 }
+
+// update the clap implementation with what you think makes sense    assert_eq!(std::env::var("DB_USER").unwrap(), "craole");g

@@ -19,12 +19,6 @@
         })
       ];
       pkgs = import nixpkgs {inherit system overlays;};
-      pythonPackages = pkgs.python311.withPackages (ps: [
-        ps.black
-        ps.pandas
-        ps.matplotlib
-        ps.seaborn
-      ]);
     in {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -35,9 +29,7 @@
           cargo-edit
           cargo-watch
           cargo-generate
-
-          #/> Python <\#
-          pythonPackages
+          rust-script
 
           #/> SQL <\#
           postgresql_15
@@ -48,10 +40,40 @@
           ripgrep
         ];
         shellHook = ''
-          envup() { [ -f "$workspace/.env" ] && . "$workspace/.env" ;}
-          export workspace="./."
-          source $workspace/bin/init_env
-          cargo check
+          # envup() { [ -f "$workspace/.env" ] && . "$workspace/.env" ;}
+          # export workspace="./."
+          # source $workspace/bin/init_env
+          # cargo check
+
+          Crun() { cargo run -- "$@" ;}
+          CrunQ() { cargo run --quiet -- "$@" ;}
+          Cwatch() {
+            cargo watch \
+              --quiet \
+              --clear \
+              --exec \
+              "run --quiet -- $*"
+          }
+          lsl() {
+            exa \
+              --icons \
+              --all \
+              --long \
+              --color-scale \
+              --no-user \
+              --git \
+              --group-directories-first \
+              --sort=.name \
+              --time 'modified' \
+              --header \
+              "$@"
+          }
+          verions() {
+            # rustc -vV
+            rustc --version
+            cargo --version
+            psql --version
+          }
         '';
       };
     });

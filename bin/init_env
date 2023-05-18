@@ -17,13 +17,13 @@ envup
 # echo "$POP"
 
 #@ Prioritize local scripts ahead of system ones
-[ -d "$bin" ] && {
-  PATH="$bin:$PATH"
-  find "$bin" -type f ! -executable -exec chmod +x {} \;
-}
+# [ -d "$bin" ] && {
+#   PATH="$bin:$PATH"
+#   find "$bin" -type f ! -executable -exec chmod +x {} \;
+# }
 
 #@ Initialize the database
-pgSQL --init --start
+# pgSQL --init --start
 
 #@ Disable external access to environment variables
 set +o allexport

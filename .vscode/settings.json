@@ -21,4 +21,12 @@
     },
     "workbench.iconTheme": "vscode-icons",
     "workbench.colorTheme": "Thrust Yellow Wash",
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml",
+        "./Cargo.toml"
+    ],
+    "rust-analyzer.showUnlinkedFileNotification": false,
 }
