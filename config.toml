@@ -1,34 +1,33 @@
 [Workspace]
 name = "Data Analytics Portfolio"
-bin = "$workspace/bin"
-log = "$workspace/log"
-src = "$workspace/src"
-assets = "$workspace/assets"
+workspace = "."
+bin = "bin"
+log = "log"
+src = "src"
+assets = "assets"
 VERBOSE = true
 
 [Projects]
 [Projects.PRJ1]
 DB = "nba"
-DIR = "$src/nba"
-DATA = "$assets/nba/data/"
+DIR = "src/nba"
+DATA = "assets/nba/data/"
 
 [Projects.PRJ2]
 DB = "world"
-DIR = "$src/world"
-INIT = "$assets/world.sql"
+DIR = "src/world"
+INIT = "assets/world.sql"
 SOURCE = "https://mysqlcode.com/wp-content/uploads/2023/01/world.zip"
 
 [Server]
-[Server.PostgreSQL]
-PGDATA = ".data"
-PGLOG = "$log/PostgreSQL.log"
-PGHOST = "localhost"
-PGPORT = "5432"
-PGUSER = "$USER"
-PGDATABASE = "postgres"
+DATA = "data"
+LOG = "log/PostgreSQL.log"
+HOST = "localhost"
+PORT = "5342"
+USER = "$USER"
+DB = "postgres"
 
 [DatabaseURL]
 DB_URL = "postgres://$PGUSER@$PGHOST:$PGPORT/bookstore"
 DB_URL_PRJ1 = "postgres://$PGUSER@$PGHOST:$PGPORT/$PRJ1_DB"
 DB_URL_PRJ2 = "postgres://$PGUSER@$PGHOST:$PGPORT/$PRJ2_DB"
-POP = "poppers"

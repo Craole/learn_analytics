@@ -1,135 +1,188 @@
 #!/usr/bin/env rust-script
 //! ```cargo
 //! [dependencies]
-//! dotenv = "0.15.0"
 //! clap = "2.33.0"
 //! toml = "0.7.3"
+//! users = "0.11.0"
 //! ```
 extern crate clap;
 
 use clap::{App, Arg};
-use dotenv::dotenv;
 use std::{env, fs, path::Path, process::exit, process::Command};
+use users::get_current_username;
 
+#[allow(dead_code)]
 struct Config {
+    workspace: String,
     db_host: String,
     db_port: String,
     db_user: String,
     db_log: String,
     db_data: String,
+    db: String,
     verbose: bool,
 }
 
 fn main() {
     // Load environment variables from the config.toml file
-    let config = load_env_vars();
+    let config = init_config();
 
     // Parse CLI arguments
     parse_arguments(config);
 }
 
-fn load_env_vars() -> Config {
-    // Load the config.toml file
-    let config = match fs::read_to_string("config.toml") {
-        Ok(contents) => contents,
-        Err(_) => {
-            eprintln!("Failed to read config.toml file");
-            exit(1);
-        }
-    };
+/// Initializes the environment configuration by loading variables from the TOML config file.
+/// Returns a Config struct containing the loaded values.
+fn init_config() -> Config {
+    // Load the TOML config file
+    let parsed_config = load_config_toml();
 
-    // Parse the config.toml contents
-    let parsed_config: toml::Value = match toml::from_str(&config) {
-        Ok(parsed) => parsed,
-        Err(_) => {
-            eprintln!("Failed to parse config.toml");
-            std::process::exit(1);
-        }
-    };
+    // Get the project root directory
+    let workspace = env::current_dir()
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| {
+            eprintln!("Failed to get the project root directory. Using a default value.");
+            String::from("default_workspace")
+        });
 
-    // Load the environmental variables from the parsed config.toml
-    let db_host = load_toml_var(&parsed_config, "Server.PostgreSQL.PGHOST");
-    let db_port = load_toml_var(&parsed_config, "Server.PostgreSQL.PGPORT");
-    let db_user = load_toml_var(&parsed_config, "Server.PostgreSQL.PGUSER");
-    let db_log = load_toml_var(&parsed_config, "Server.PostgreSQL.PGLOG");
-    let db_data = load_toml_var(&parsed_config, "Server.PostgreSQL.PGDATA");
+    // Load individual variables from the config file
+    let db_log = load_toml_var(&parsed_config, "Server.LOG");
+    let db_data_relative = load_toml_var(&parsed_config, "Server.DATA");
+    let db_data = Path::new(&workspace)
+        .join(&db_data_relative)
+        .to_string_lossy()
+        .into_owned();
+    let db_host = load_toml_var(&parsed_config, "Server.HOST");
+    let db_port = load_toml_var(&parsed_config, "Server.PORT");
+    let db = load_toml_var(&parsed_config, "Server.DB");
+
+    // Get the current username
+    let db_user = get_current_username()
+        .map(|username| username.to_string_lossy().into_owned())
+        .unwrap_or_else(|| {
+            eprintln!("Failed to get the current username. Using a default value.");
+            String::from("default_user")
+        });
+
+    // Export variables as environment variables
+    env::set_var("WORKSPACE", &workspace);
+    env::set_var("PGHOST", &db_host);
+    env::set_var("PGPORT", &db_port);
+    env::set_var("PGUSER", &db_user);
+    env::set_var("PGLOG", &db_log);
+    env::set_var("PGDATA", &db_data);
+    env::set_var("PGDATABASE", &db);
+
+    println!("Setting PGLOG: {}", &db_log);
+    println!("Setting PGHOST: {}", &db_host);
+    println!("Setting PGPORT: {}", &db_port);
+    println!("Setting PGUSER: {}", &db_user);
+    println!("Setting PGDATA: {}", &db_data);
+    println!("Setting PGDATABASE: {}", &db);
+    println!("Setting WORKSPACE: {}", &workspace);
+
+    // Load the verbose flag from the config file
     let verbose = parsed_config
         .get("Workspace")
         .and_then(|table| table.get("VERBOSE"))
-        .and_then(|v| v.as_integer())
-        .map(|v| v != 0)
+        .and_then(|v| {
+            // Check if the value is an integer
+            if let Some(integer) = v.as_integer() {
+                Some(integer != 0)
+            }
+            // Check if the value is a boolean
+            else if let Some(boolean) = v.as_bool() {
+                Some(boolean)
+            }
+            // Value is not an integer or boolean
+            else {
+                None
+            }
+        })
         .unwrap_or(false);
 
+    // Construct the Config struct with the loaded values
     Config {
+        workspace,
         db_host,
         db_port,
         db_user,
         db_log,
         db_data,
+        db,
         verbose,
     }
 }
 
+/// Loads a variable from the parsed TOML config.
+/// The `var_path` parameter specifies the path to the variable using dot notation.
+/// Returns the variable as a `String`.
 fn load_toml_var(parsed_config: &toml::Value, var_path: &str) -> String {
     let mut parts = var_path.split('.').peekable();
     let mut current_value = parsed_config;
 
     while let Some(part) = parts.next() {
-        // Retrieve the value corresponding to the current part
+        // Get the next part of the variable path from the parsed config
         current_value = match current_value.get(part) {
             Some(value) => value,
             None => {
-                // Handle the case where the variable is not set
+                // Variable is not found, print error message and exit
                 eprintln!("{} must be set in the config.toml file", var_path);
-                std::process::exit(1);
+                exit(1);
             }
         };
 
         if parts.peek().is_none() {
-            // Last part of the variable path
+            // Reached the last part of the variable path
             if let Some(value) = current_value.as_str() {
-                // Check if the value is a string
+                // Variable value is a string, return it
                 return value.to_owned();
             } else {
-                // Handle the case where the value is not a string
+                // Variable value is not a string, print error message and exit
                 eprintln!(
                     "{} must be a string value in the config.toml file",
                     var_path
                 );
-                std::process::exit(1);
+                exit(1);
             }
         } else if !current_value.is_table() {
-            // Intermediate part is not a table
+            // Variable value is not a table, print error message and exit
             eprintln!("{} must be a table in the config.toml file", var_path);
-            std::process::exit(1);
+            exit(1);
         }
     }
 
-    // This line should be unreachable, as the loop should always return before reaching this point
+    // This line should never be reached
     unreachable!();
 }
 
+/// Loads the TOML configuration from the `config.toml` file.
+/// Returns the parsed TOML value.
 fn load_config_toml() -> toml::Value {
-    // Load the config.toml file
+    // Read the contents of the `config.toml` file
     let config = match fs::read_to_string("config.toml") {
         Ok(contents) => contents,
         Err(_) => {
+            // Error occurred while reading the file, print error message and exit
             eprintln!("Failed to read config.toml file");
-            std::process::exit(1);
+            exit(1);
         }
     };
 
-    // Parse the config.toml contents
+    // Parse the TOML contents
     match toml::from_str(&config) {
-        Ok(parsed) => parsed,
+        Ok(parsed) => parsed, // Return the parsed TOML value
         Err(_) => {
+            // Error occurred while parsing the TOML, print error message and exit
             eprintln!("Failed to parse config.toml");
-            std::process::exit(1);
+            exit(1);
         }
     }
 }
 
+/// Parses the command-line arguments and performs the corresponding actions based on the configuration.
 fn parse_arguments(mut config: Config) {
+    // Create a new App instance with program metadata and arguments
     let matches = App::new("psqler")
         .version("1.0")
         .author("Craole")
@@ -147,15 +200,21 @@ fn parse_arguments(mut config: Config) {
                 .help("Stop the active server"),
         )
         .arg(
+            Arg::with_name("init")
+                .short("i")
+                .long("init")
+                .help("Initialize the server data directory and log file"),
+        )
+        .arg(
             Arg::with_name("reset")
                 .short("r")
                 .long("reset")
-                .help("Erase the server data and logs"),
+                .help("Erase the server data"),
         )
         .arg(
-            Arg::with_name("check")
+            Arg::with_name("status")
                 .short("c")
-                .long("check")
+                .long("status")
                 .help("Check if the server is active"),
         )
         .arg(
@@ -172,11 +231,18 @@ fn parse_arguments(mut config: Config) {
         )
         .get_matches();
 
-    // Use the value from CLI arguments if present
+    // Update the verbose flag based on the presence of the 'verbose' argument
     config.verbose = matches.is_present("verbose") || config.verbose;
 
+    // Perform actions based on the presence of specific arguments
+
+    if matches.is_present("init") {
+        init_server(&config);
+    }
+
     if matches.is_present("start") {
-        start_server(&config);
+        init_server(&config);
+        // start_server(&config);
     }
 
     if matches.is_present("stop") {
@@ -184,11 +250,24 @@ fn parse_arguments(mut config: Config) {
     }
 
     if matches.is_present("reset") {
-        reset_server(&config);
+        wipe_server(&config);
+        // if stop_server(&config) {
+        //     if wipe_server(&config) {
+        //         start_server(&config);
+        //     }
+        // }
     }
 
-    if matches.is_present("check") {
-        server_instance_is_valid(&config);
+    if matches.is_present("status") {
+        if server_instance_is_valid(&config) {
+            if config.verbose {
+                println!("The server is active.");
+            }
+        } else {
+            if config.verbose {
+                println!("No active server found");
+            }
+        }
     }
 
     if matches.is_present("db") {
@@ -196,34 +275,152 @@ fn parse_arguments(mut config: Config) {
     }
 }
 
-fn start_server(config: &Config) {
-    println!("Starting the server...");
-    if config.verbose {
-        println!("DB_HOST: {}", config.db_host);
-        println!("DB_PORT: {}", config.db_port);
-        println!("DB_USER: {}", config.db_user);
-        println!("DB_LOG: {}", config.db_log);
-        println!("DB_DATA: {}", config.db_data);
+/// Starts the PostgreSQL server by ensuring it is not already active, initializing server data, and starting the server.
+fn start_server(config: &Config) -> bool {
+    // Step 1: Ensure the server is not already active
+    if server_instance_is_valid(config) {
+        if config.verbose {
+            println!("Server is already active. Skipping server start.");
+        }
+        return true; // Server is already active, so return true
     }
-    // Your start server implementation goes here
+
+    // Step 2: Initialize the server data
+    // if let Err(err) = init_server(config) {
+    //     eprintln!("Failed to initialize server data: {}", err);
+    //     return false; // Failed to initialize server data, so return false
+    // }
+
+    // Step 3: Start the server
+    // let pg_ctl_output = Command::new("pg_ctl")
+    //     .arg("--log-file")
+    //     .arg(&config.db_log)
+    //     .arg("--options")
+    //     .arg(format!("--unix_socket_directories='{}'", config.workspace))
+    //     .arg("--host")
+    //     .arg(&config.db_host)
+    //     .arg("--port")
+    //     .arg(&config.db_port)
+    //     .arg("--username")
+    //     .arg(&config.db_user)
+    //     .arg("start")
+    //     .output();
+    let pg_ctl_output = Command::new("pg_ctl")
+        .arg("-D")
+        .arg(&config.db_data)
+        .arg("--host")
+        .arg(&config.db_host)
+        .arg("--port")
+        .arg(&config.db_port)
+        .arg("--log")
+        .arg(&config.db_log)
+        .arg("--options")
+        .arg(format!(
+            "-c listen_addresses= -c unix_socket_directories='{}'",
+            config.db_data
+        ))
+        // .arg(format!("-c listen_addresses= -c unix_socket_directories='{}'", config.workspace))
+        // .arg("-h")
+        // .arg(&config.db_host)
+        // .arg("-p")
+        // .arg(&config.db_port.to_string())
+        // .arg("-U")
+        // .arg(&config.db_user)
+        .arg("status")
+        .output();
+
+    match pg_ctl_output {
+        Ok(output) => {
+            if output.status.success() {
+                if config.verbose {
+                    println!("Server started successfully.");
+                }
+                true
+            } else {
+                eprintln!("Failed to start the server.");
+                false
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to execute pg_ctl: {:?}", err);
+            false
+        }
+    }
 }
 
-fn stop_server(config: &Config) {
-    println!("Stopping the server...");
-    // Your stop server implementation goes here
-    if config.verbose {
-        println!("Stop server verbose message");
+/// Stops the PostgreSQL server.
+/// Returns `true` if the server is successfully stopped or already stopped, `false` otherwise.
+fn stop_server(config: &Config) -> bool {
+    // Check if the server instance is not valid
+    if !server_instance_is_valid(config) {
+        if config.verbose {
+            println!("The server is not active.");
+        }
+        return false;
+    }
+
+    // Execute the "pg_ctl stop" command to stop the server
+    // Command: pg_ctl stop -D $PGDATA --log $PGLOG --mode smart
+    let cmd_output = Command::new("pg_ctl")
+        .arg("stop")
+        .arg("-D")
+        .arg(&config.db_data)
+        .arg("--log")
+        .arg(&config.db_log)
+        .arg("--mode")
+        .arg("smart")
+        .output()
+        .expect("Failed to execute pg_ctl");
+
+    // Convert the command output to a string
+    let cmd_output_str = String::from_utf8_lossy(&cmd_output.stdout);
+
+    // Check if the command output indicates successful server stoppage
+    if cmd_output_str.contains("server stopped") {
+        if config.verbose {
+            println!("Stopping the active server.");
+        }
+        true
+    } else {
+        if config.verbose {
+            println!("Failed to stop the active server.");
+        }
+        false
     }
 }
 
-fn reset_server(config: &Config) {
-    println!("Resetting the server...");
-    // Your reset server implementation goes here
-    if config.verbose {
-        println!("Reset server verbose message");
+/// Resets the PostgreSQL server by stopping it, deleting the data folder and log, and then starting it.
+fn wipe_server(config: &Config) -> bool {
+    // Skip if the data directory doesn't exist
+    if !Path::new(&config.db_data).exists() {
+        if config.verbose {
+            println!("Data directory missing: {}", config.db_data);
+        }
+        return false;
+    }
+
+    // Stop the server if it's active
+    if server_instance_is_valid(config) {
+        if config.verbose {
+            println!("Stopping the active server.");
+        }
+        stop_server(config);
+    }
+
+    // Remove the data directory
+    if let Err(err) = fs::remove_dir_all(&config.db_data) {
+        eprintln!("Failed to delete the data folder: {}", err);
+        false
+    } else {
+        if config.verbose {
+            println!("Data folder deleted successfully.");
+        }
+        true
     }
 }
 
+/// Checks if the server instance is valid by executing the "pg_ctl status" command.
+/// Returns true if the server is active, false otherwise.
 fn server_instance_is_valid(config: &Config) -> bool {
     // Execute the "pg_ctl status" command to check server status
     let cmd_output = Command::new("pg_ctl")
@@ -237,17 +434,7 @@ fn server_instance_is_valid(config: &Config) -> bool {
     let cmd_output_str = String::from_utf8_lossy(&cmd_output.stdout);
 
     // Check if the output contains "PID" to determine server validity
-    if cmd_output_str.contains("PID") {
-        if config.verbose {
-            println!("The server is active.");
-        }
-        true
-    } else {
-        if config.verbose {
-            println!("No active server found");
-        }
-        false
-    }
+    cmd_output_str.contains("PID")
 }
 
 fn server_data_is_valid(config: &Config) -> bool {
@@ -282,13 +469,15 @@ fn server_data_is_valid(config: &Config) -> bool {
     false
 }
 
-fn init_server_data(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
+/// Initializes the server data if it is not already valid.
+/// Returns an error if the data initialization fails.
+fn init_server(config: &Config) -> bool {
     // Check if the server data is already valid
     if server_data_is_valid(config) {
         if config.verbose {
             println!("Skipping data initialization as server data is valid.");
         }
-        return Ok(());
+        return false;
     }
 
     // Execute the `pg_ctl initdb` command to initialize the server data
@@ -296,25 +485,51 @@ fn init_server_data(config: &Config) -> Result<(), Box<dyn std::error::Error>> {
         .arg("initdb")
         .arg("-D")
         .arg(&config.db_data)
+        .arg("--log")
+        .arg(&config.db_log)
         .output()
         .expect("Failed to execute pg_ctl");
 
+    // Check if the command execution was successful
     if cmd_output.status.success() {
         if config.verbose {
             println!("Data initialized successfully");
         }
-        Ok(())
+        true
     } else {
         if config.verbose {
             println!("Failed to initialize data");
         }
-        Err("Failed to initialize data".into())
+        false
     }
 }
 
 fn perform_database_operation(config: &Config) {
     println!("Performing database operation...");
-    // Your database operation implementation goes here
+
+    // Execute psql command to activate the database
+    let psql_output = Command::new("psql")
+        .arg("--dbname")
+        .arg(&config.db)
+        .output();
+
+    match psql_output {
+        Ok(output) => {
+            if output.status.success() {
+                if config.verbose {
+                    println!("psql command executed successfully.");
+                }
+                // Your database operation implementation goes here
+                // Add your code to perform the desired database operation
+            } else {
+                eprintln!("Failed to execute psql command.");
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to execute psql command: {}", err);
+        }
+    }
+
     if config.verbose {
         println!("Perform database operation verbose message");
     }

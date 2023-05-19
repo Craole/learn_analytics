@@ -40,8 +40,8 @@
           ripgrep
         ];
         shellHook = ''
-          export workspace="./."
-          source $workspace/bin/init_env
+          # export workspace="./."
+          # source $workspace/bin/init_env
           # cargo check
 
           # envup(){
@@ -78,7 +78,7 @@
             psql --version
           }
 
-          # envup
+          rust-script bin/psqler --start
         '';
       };
     });
