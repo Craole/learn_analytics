@@ -40,11 +40,14 @@
           ripgrep
         ];
         shellHook = ''
-          # envup() { [ -f "$workspace/.env" ] && . "$workspace/.env" ;}
-          # export workspace="./."
-          # source $workspace/bin/init_env
+          export workspace="./."
+          source $workspace/bin/init_env
           # cargo check
 
+          # envup(){
+          #   [ -f "$workspace/.env" ] &&
+          #     source "$workspace/.env"
+          # }
           Crun() { cargo run -- "$@" ;}
           CrunQ() { cargo run --quiet -- "$@" ;}
           Cwatch() {
@@ -74,6 +77,8 @@
             cargo --version
             psql --version
           }
+
+          # envup
         '';
       };
     });
