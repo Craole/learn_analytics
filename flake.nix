@@ -40,16 +40,11 @@
           ripgrep
         ];
         shellHook = ''
-          # export workspace="./."
-          # source $workspace/bin/init_env
-          # cargo check
-
-          # envup(){
-          #   [ -f "$workspace/.env" ] &&
-          #     source "$workspace/.env"
-          # }
+          #/> Bin <\#
+          Ccheck() { cargo check -- "$@" ;}
           Crun() { cargo run -- "$@" ;}
           CrunQ() { cargo run --quiet -- "$@" ;}
+          CrunR() { cargo run --release --quiet -- "$@" ;}
           Cwatch() {
             cargo watch \
               --quiet \
@@ -71,14 +66,24 @@
               --header \
               "$@"
           }
-          verions() {
+          versions() {
             # rustc -vV
             rustc --version
             cargo --version
+            rust-script --version
             psql --version
+            sqlx --version
           }
+          pSQLer() { rust-script bin/psqler "$@" ;}
+          # rust-script bin/psqler --start
+          # rust-script bin/psqler
 
-          rust-script bin/psqler --start
+          #/> Autorun <\#
+          versions
+          printf "\n"
+          pSQLer
+          printf "\n"
+          CrunR
         '';
       };
     });

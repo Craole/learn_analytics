@@ -8,10 +8,14 @@ init_psql_data() {
 #@ Start the PostgreSQL server if inactive
 start_psql_server() {
   pg_isready --quiet ||
-    pg_ctl \
-      --log "$PGLOG" \
-      --options "--unix_socket_directories='$workspace'" \
-      start
+    export PGDATA=data
+  export PGHOST=localhost
+  export PGPOST=5444
+  export PGUSER=craole
+  pg_ctl \
+    --log ligfile \
+    --options "--unix_socket_directories='$workspace'" \
+    start
 }
 
 #@ Stop the PostgreSQL server if active

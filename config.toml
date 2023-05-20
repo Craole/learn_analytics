@@ -5,7 +5,9 @@ bin = "bin"
 log = "log"
 src = "src"
 assets = "assets"
-VERBOSE = true
+
+[verbosity]
+level = "verbose"
 
 [Projects]
 [Projects.PRJ1]
@@ -23,7 +25,7 @@ SOURCE = "https://mysqlcode.com/wp-content/uploads/2023/01/world.zip"
 DATA = "data"
 LOG = "log/PostgreSQL.log"
 HOST = "localhost"
-PORT = "5342"
+PORT = "5321"
 USER = "$USER"
 DB = "postgres"
 
