@@ -52,6 +52,14 @@
               --exec \
               "run --quiet -- $*"
           }
+          CMDer() {
+            if type "$1" >/dev/null 2>&1; then
+              eval "$*"
+            # else
+            #   printf "Command not found: %s" "$1"
+            #   exit 1
+            fi
+          }
           lsl() {
             exa \
               --icons \
@@ -79,11 +87,12 @@
           # rust-script bin/psqler
 
           #/> Autorun <\#
+          CMDer Editor .
           versions
           printf "\n"
           pSQLer --start
           printf "\n"
-          CrunR
+          # CrunR
         '';
       };
     });
