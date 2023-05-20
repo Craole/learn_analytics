@@ -505,16 +505,15 @@ fn manage_db(config: &Config) {
         .arg(&config.db_user)
         .arg("--dbname")
         .arg(&config.db)
-        .output();
+        .status(); // Use `status()` instead of `output()` to only check the command's exit status
 
     match cmd_output {
-        Ok(output) => {
-            if output.status.success() {
-                // if config.verbose {
-                //     println!("psql command executed successfully.");
-                // }
+        Ok(status) => {
+            if status.success() {
+                println!("Entered PostgreSQL prompt.");
                 // Your database operation implementation goes here
                 // Add your code to perform the desired database operation
+                // For example, you can interact with the database using the `diesel` crate or execute SQL queries using the `postgres` crate.
             } else {
                 eprintln!("Failed to execute psql command.");
             }

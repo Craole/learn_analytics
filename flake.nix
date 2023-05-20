@@ -81,7 +81,7 @@
           #/> Autorun <\#
           versions
           printf "\n"
-          pSQLer
+          pSQLer --start
           printf "\n"
           CrunR
         '';
