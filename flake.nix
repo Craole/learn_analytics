@@ -30,6 +30,9 @@
           cargo-watch
           cargo-generate
           rust-script
+          clang
+          libclang
+          cmakeMinimal
 
           #/> SQL <\#
           postgresql_15
