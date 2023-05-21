@@ -38,6 +38,7 @@
           #/> Tools <\#
           exa
           ripgrep
+          starship
         ];
         shellHook = ''
           #/> Bin <\#
@@ -60,6 +61,7 @@
             #   exit 1
             fi
           }
+          edit() { CMDer Editor "$@";}
           lsl() {
             exa \
               --icons \
@@ -82,17 +84,16 @@
             psql --version
             sqlx --version
           }
-          pSQLer() { rust-script bin/psqler "$@" ;}
+          pSQLer() { rust-script bin/psqler.rs "$@" ;}
           # rust-script bin/psqler --start
           # rust-script bin/psqler
 
           #/> Autorun <\#
-          CMDer Editor .
           versions
           printf "\n"
           pSQLer --start
           printf "\n"
-          # CrunR
+          CrunR
         '';
       };
     });
