@@ -46,19 +46,19 @@
         ];
         shellHook = ''
           #/> Authentication <\#
-          # see https://unix.stackexchange.com/a/295652/332452
-          #source /etc/X11/xinit/xinitrc.d/50-systemd-user.sh
-          systemctl --user import-environment DISPLAY XAUTHORITY
-          if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-              dbus-update-activation-environment DISPLAY XAUTHORITY
-          fi
+          # # see https://unix.stackexchange.com/a/295652/332452
+          # #source /etc/X11/xinit/xinitrc.d/50-systemd-user.sh
+          # systemctl --user import-environment DISPLAY XAUTHORITY
+          # if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+          #     dbus-update-activation-environment DISPLAY XAUTHORITY
+          # fi
 
-          # see https://wiki.archlinux.org/title/GNOME/Keyring#xinitrc
-          eval $(gnome-keyring-daemon --start)
-          export SSH_AUTH_SOCK
+          # # see https://wiki.archlinux.org/title/GNOME/Keyring#xinitrc
+          # eval $(gnome-keyring-daemon --start)
+          # export SSH_AUTH_SOCK
 
-          # see https://github.com/NixOS/nixpkgs/issues/14966#issuecomment-520083836
-          mkdir -p "$HOME"/.local/share/keyrings
+          # # see https://github.com/NixOS/nixpkgs/issues/14966#issuecomment-520083836
+          # mkdir -p "$HOME"/.local/share/keyrings
 
           #/> Bin <\#
           Ccheck() { cargo check -- "$@" ;}
@@ -103,7 +103,7 @@
             psql --version
             sqlx --version
           }
-          pSQLer() { rust-script bin/psqler.rs "$@" ;}
+          pSQLer() { rust-script bin/pSQLer "$@" ;}
           IDE() {
             seahorse &
             code .
@@ -113,7 +113,7 @@
           # rust-script bin/psqler
 
           #/> Autorun <\#
-          IDE
+          # IDE
           versions
           printf "\n"
           pSQLer --start

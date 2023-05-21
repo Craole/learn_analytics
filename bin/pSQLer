@@ -1,0 +1,549 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! clap = "2.33.0"
+//! toml = "0.7.3"
+//! users = "0.11.0"
+//! ```
+extern crate clap;
+
+use clap::{App, Arg};
+use std::{env, fs, path::Path, process::exit, process::Command};
+use users::get_current_username;
+
+#[derive(PartialEq)]
+enum Verbosity {
+    Verbose,
+    Normal,
+    Quiet,
+}
+
+struct Config {
+    db_host: String,
+    db_port: String,
+    db_user: String,
+    db_log: String,
+    db_data: String,
+    db: String,
+    verbosity: Verbosity,
+}
+
+fn main() {
+    //~ Load environment variables from the config.toml file
+    let config = init_config();
+
+    //~ Parse CLI arguments
+    parse_arguments(config);
+}
+
+/// Parses the command-line arguments and performs the corresponding actions based on the configuration.
+fn parse_arguments(mut config: Config) {
+    //~ Create a new App instance with program metadata and arguments
+    let matches = App::new("psqler")
+        .version("1.0")
+        .author("Craole")
+        .about("PostgreSQL Server Manager")
+        .arg(
+            Arg::with_name("start")
+                .short("s")
+                .long("start")
+                .help("Initialize the server"),
+        )
+        .arg(
+            Arg::with_name("stop")
+                .short("x")
+                .long("stop")
+                .help("Stop the active server"),
+        )
+        .arg(
+            Arg::with_name("init")
+                .short("i")
+                .long("init")
+                .help("Initialize the server data directory and log file"),
+        )
+        .arg(
+            Arg::with_name("reset")
+                .short("r")
+                .long("reset")
+                .help("Erase the server data"),
+        )
+        .arg(
+            Arg::with_name("status")
+                .short("c")
+                .long("status")
+                .help("Check if the server is active"),
+        )
+        .arg(
+            Arg::with_name("db")
+                .short("l")
+                .long("db")
+                .help("Perform database operation"),
+        )
+        .arg(
+            Arg::with_name("info")
+                .short("e")
+                .long("env")
+                .long("info")
+                .help("Environment variables"),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .short("d")
+                .long("verbose")
+                .help("Enable verbose output"),
+        )
+        .arg(
+            Arg::with_name("quiet")
+                .short("q")
+                .long("quiet")
+                .help("Enable quiet output"),
+        )
+        .get_matches();
+
+    //~ Update the messaging level based on the presence of the 'verbose' or 'quiet' arguments
+    let mut verbosity = Verbosity::Normal;
+    if matches.is_present("verbose") {
+        verbosity = Verbosity::Verbose;
+    } else if matches.is_present("quiet") {
+        verbosity = Verbosity::Quiet;
+    }
+
+    config.verbosity = verbosity;
+
+    //~ Perform actions based on the presence of specific arguments.
+    //~ If no specific arguments are present or only the 'env' argument is present, show environment variables
+    if matches.args.is_empty() || matches.is_present("info") {
+        show_info(&config);
+        return;
+    }
+    if matches.is_present("init") {
+        init_server(&config);
+    }
+
+    if matches.is_present("start") {
+        init_server(&config);
+        start_server(&config);
+    }
+
+    if matches.is_present("stop") {
+        stop_server(&config);
+    }
+
+    if matches.is_present("reset") {
+        stop_server(&config);
+        drop_server(&config);
+        init_server(&config);
+        start_server(&config);
+    }
+
+    if matches.is_present("status") {
+        show_info(&config);
+    }
+
+    if matches.is_present("db") {
+        start_server(&config);
+        manage_db(&config);
+    }
+}
+
+/// Initializes the environment configuration by loading variables from the TOML config file.  Returns a Config struct containing the loaded values.
+fn init_config() -> Config {
+    //~ Load the TOML config file
+    let parsed_config = load_config_toml();
+
+    //~ Get the project root directory
+    let workspace = env::current_dir()
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| {
+            eprintln!("Failed to get the project root directory. Using a default value.");
+            String::from("default_workspace")
+        });
+
+    //~ Load individual variables from the config file
+    let db_log_relative = load_toml_var(&parsed_config, "Server.LOG");
+    let db_log = Path::new(&workspace)
+        .join(&db_log_relative)
+        .to_string_lossy()
+        .into_owned();
+    let db_data_relative = load_toml_var(&parsed_config, "Server.DATA");
+    let db_data = Path::new(&workspace)
+        .join(&db_data_relative)
+        .to_string_lossy()
+        .into_owned();
+    let db_host = load_toml_var(&parsed_config, "Server.HOST");
+    let db_port = load_toml_var(&parsed_config, "Server.PORT");
+    let db = load_toml_var(&parsed_config, "Server.DB");
+
+    //~ Get the current username
+    let db_user = get_current_username()
+        .map(|username| username.to_string_lossy().into_owned())
+        .unwrap_or_else(|| {
+            eprintln!("Failed to get the current username. Using a default value.");
+            String::from("default_user")
+        });
+
+    //~ Extract verbosity from config.toml
+    let verbosity = match parsed_config.get("verbosity") {
+        Some(value) => match value.get("level") {
+            Some(level) => match level.as_str() {
+                Some("verbose") => Verbosity::Verbose,
+                Some("normal") => Verbosity::Normal,
+                Some("quiet") => Verbosity::Quiet,
+                _ => {
+                    eprintln!("Invalid verbosity level in config.toml. Using normal level.");
+                    Verbosity::Normal
+                }
+            },
+            None => {
+                eprintln!("Missing verbosity level in config.toml. Using normal level.");
+                Verbosity::Normal
+            }
+        },
+        None => {
+            eprintln!("Missing verbosity section in config.toml. Using normal level.");
+            Verbosity::Normal
+        }
+    };
+
+    //~ Export variables as environment variables
+    env::set_var("WORKSPACE", &workspace);
+    env::set_var("PGHOST", &db_host);
+    env::set_var("PGPORT", &db_port);
+    env::set_var("PGUSER", &db_user);
+    env::set_var("PGLOG", &db_log);
+    env::set_var("PGDATA", &db_data);
+    env::set_var("PGDATABASE", &db);
+
+    //~ Construct the Config struct with the loaded values
+    Config {
+        db_host,
+        db_port,
+        db_user,
+        db_log,
+        db_data,
+        db,
+        verbosity,
+    }
+}
+
+/// Loads a variable from the parsed TOML config.
+/// The `var_path` parameter specifies the path to the variable using dot notation.
+/// Returns the variable as a `String`.
+fn load_toml_var(parsed_config: &toml::Value, var_path: &str) -> String {
+    let mut parts = var_path.split('.').peekable();
+    let mut current_value = parsed_config;
+
+    while let Some(part) = parts.next() {
+        //~ Get the next part of the variable path from the parsed config
+        current_value = match current_value.get(part) {
+            Some(value) => value,
+            None => {
+                //~ Variable is not found, print error message and exit
+                eprintln!("{} must be set in the config.toml file", var_path);
+                exit(1);
+            }
+        };
+
+        if parts.peek().is_none() {
+            //~ Reached the last part of the variable path
+            if let Some(value) = current_value.as_str() {
+                //~ Variable value is a string, return it
+                return value.to_owned();
+            } else {
+                //~ Variable value is not a string, print error message and exit
+                eprintln!(
+                    "{} must be a string value in the config.toml file",
+                    var_path
+                );
+                exit(1);
+            }
+        } else if !current_value.is_table() {
+            //~ Variable value is not a table, print error message and exit
+            eprintln!("{} must be a table in the config.toml file", var_path);
+            exit(1);
+        }
+    }
+
+    //~ This line should never be reached
+    unreachable!();
+}
+
+/// Loads the TOML configuration from the `config.toml` file.
+/// Returns the parsed TOML value.
+fn load_config_toml() -> toml::Value {
+    //~ Read the contents of the `config.toml` file
+    let config = match fs::read_to_string("config.toml") {
+        Ok(contents) => contents,
+        Err(_) => {
+            //~ Error occurred while reading the file, print error message and exit
+            eprintln!("Failed to read config.toml file");
+            exit(1);
+        }
+    };
+
+    //~ Parse the TOML contents
+    match toml::from_str(&config) {
+        Ok(parsed) => parsed, //~ Return the parsed TOML value
+        Err(_) => {
+            //~ Error occurred while parsing the TOML, print error message and exit
+            eprintln!("Failed to parse config.toml");
+            exit(1);
+        }
+    }
+}
+
+/// Displays information about the server configuration and status.
+fn show_info(config: &Config) {
+    //~ Environment Variables
+    println!("PGDATA: {}", config.db_data);
+    println!("PGLOG: {}", config.db_log);
+    println!("PGHOST: {}", config.db_host);
+    println!("PGPORT: {}", config.db_port);
+    println!("PGUSER: {}", config.db_user);
+    println!("PGDATABASE: {}", config.db);
+
+    //~ Status
+    print!("PGSTATUS: ");
+    if server_is_active(config) {
+        //~ Server is active
+        println!("active");
+    } else {
+        if !server_is_initialized(config) {
+            //~ Server is not initialized
+            println!("uninitialized");
+        } else {
+            //~ Server is inactive
+            println!("inactive");
+        }
+    }
+}
+
+/// Starts the PostgreSQL server by ensuring it is not already active initializing server data, and starting the server.
+fn start_server(config: &Config) -> bool {
+    //~ Ensure the server is not already active
+    if server_is_active(config) {
+        match config.verbosity {
+            Verbosity::Verbose => println!("The server is already active"),
+            Verbosity::Normal => println!("🚀 Server active"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        return true;
+    }
+
+    //~ Execute the "pg_ctl stop" command to start the server
+    //~ Command: pg_ctl start \
+    //~              -D $PGDATA --log $PGLOG \
+    //~              --options "--unix_socket_directories='$PGDATA'"
+    let cmd_output = Command::new("pg_ctl")
+        .arg("start")
+        .arg("--log")
+        .arg("$PGLOG")
+        .arg("--options")
+        .arg(format!("--unix_socket_directories='{}'", config.db_data))
+        .output()
+        .expect("Failed to execute pg_ctl");
+
+    //~ Display the output mesasage based on the selected level og verbosity
+    if cmd_output.status.success() {
+        let success_message = String::from_utf8_lossy(&cmd_output.stdout);
+        match config.verbosity {
+            Verbosity::Verbose => {
+                println!("Success message: {}", success_message);
+
+                println!("The server has been started via:");
+                println!("PGDATA: {}", &config.db_data);
+                println!("PGHOST: {}", &config.db_host);
+                println!("PGPORT: {}", &config.db_port);
+                println!("PGUSER: {}", &config.db_user);
+            }
+            Verbosity::Normal => println!("🚀 Server activated"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        return true;
+    } else {
+        let error_message = String::from_utf8_lossy(&cmd_output.stderr);
+        let error_message = match config.verbosity {
+            Verbosity::Verbose => format!("Failed to start the server: {}", error_message),
+            Verbosity::Normal => format!("Failed to start the server"),
+            Verbosity::Quiet => String::new(), //~ Empty error message for quiet mode
+        };
+        if !error_message.is_empty() {
+            eprintln!("{}", error_message); //~ Print the error message if not empty
+        }
+        return false;
+    }
+}
+
+/// Stops the PostgreSQL server.
+/// Returns `true` if the server is successfully stopped or is already stopped and `false` if otherwise.
+fn stop_server(config: &Config) -> bool {
+    //~ Check if the server instance is not valid
+    if !server_is_active(config) {
+        match config.verbosity {
+            Verbosity::Verbose => println!("The server is not active"),
+            Verbosity::Normal => println!("💀 Server inactive"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        return false;
+    }
+
+    //~ Execute the "pg_ctl stop" command to stop the server
+    //~ Command: pg_ctl stop -D $PGDATA --log $PGLOG --mode smart
+    let cmd_output = Command::new("pg_ctl")
+        .arg("stop")
+        .arg("-D")
+        .arg(&config.db_data)
+        .arg("--log")
+        .arg(&config.db_log)
+        .arg("--mode")
+        .arg("smart")
+        .output()
+        .expect("Failed to execute pg_ctl");
+
+    //~ Convert the command output to a string
+    let cmd_output_str = String::from_utf8_lossy(&cmd_output.stdout);
+
+    //~ Check if the command output indicates successful server stoppage
+    if cmd_output_str.contains("server stopped") {
+        match config.verbosity {
+            Verbosity::Verbose => println!("Server stopped"),
+            Verbosity::Normal => println!("💀 Server deactivated"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        true
+    } else {
+        if config.verbosity != Verbosity::Quiet {
+            println!("Failed to stop the active server.");
+        }
+        false
+    }
+}
+
+/// Resets the PostgreSQL server by deleting the PGDATA directory
+fn drop_server(config: &Config) -> bool {
+    //~ Skip if the data directory doesn't exist
+    if !Path::new(&config.db_data).exists() {
+        if config.verbosity == Verbosity::Verbose {
+            println!("Data directory missing: {}", config.db_data);
+        }
+        return false;
+    }
+
+    //~ Remove the data directory
+    if let Err(err) = fs::remove_dir_all(&config.db_data) {
+        if config.verbosity != Verbosity::Quiet {
+            eprintln!("Failed to delete the data folder: {}", err);
+        }
+        false
+    } else {
+        match config.verbosity {
+            Verbosity::Verbose => println!("The server data has been deleted"),
+            Verbosity::Normal => println!("🔥 Server trashed"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        true
+    }
+}
+/// Initializes the server data if it is not already valid.
+fn init_server(config: &Config) -> bool {
+    //~ Check if the server data is already valid
+    if server_is_initialized(config) {
+        match config.verbosity {
+            Verbosity::Verbose => println!("Server is already initialized."),
+            Verbosity::Normal => (),          //~ Do nothing
+            Verbosity::Quiet => return false, //~ Quiet mode, return immediately
+        }
+        return false;
+    }
+
+    //~ Execute the `pg_ctl initdb` command to initialize the server data
+    //~ command: pg_ctl init -D data
+    let cmd_output = Command::new("pg_ctl")
+        .arg("initdb")
+        .arg("-D")
+        .arg(&config.db_data)
+        .output()
+        .expect("Failed to execute pg_ctl");
+
+    //~ Display the output mesasage based on the selected level og verbosity
+    if cmd_output.status.success() {
+        let success_message = String::from_utf8_lossy(&cmd_output.stdout);
+        match config.verbosity {
+            Verbosity::Verbose => {
+                println!("The server has been initialized");
+                println!("Success message: {}", success_message);
+            }
+            Verbosity::Normal => println!("🗃️ Server initialized"),
+            Verbosity::Quiet => (), //~ Do nothing
+        }
+        return true;
+    } else {
+        let error_message = String::from_utf8_lossy(&cmd_output.stderr);
+        let error_message = match config.verbosity {
+            Verbosity::Verbose => format!("Failed to initialize the server: {}", error_message),
+            Verbosity::Normal => format!("❌ Server not initialized"),
+            Verbosity::Quiet => String::new(), //~ Empty error message for quiet mode
+        };
+        if !error_message.is_empty() {
+            eprintln!("{}", error_message); //~ Print the error message if not empty
+        }
+        return false;
+    }
+}
+
+/// Allows access to the database via psql
+fn manage_db(config: &Config) {
+    //~ Execute psql command to activate the database
+    let cmd_output = Command::new("psql")
+        .arg("--host")
+        .arg(&config.db_host)
+        .arg("--port")
+        .arg(&config.db_port)
+        .arg("--user")
+        .arg(&config.db_user)
+        .arg("--dbname")
+        .arg(&config.db)
+        .status(); //~ Use `status()` instead of `output()` to only check the command's exit status
+
+    match cmd_output {
+        Ok(status) => {
+            if status.success() {
+                println!("Entered PostgreSQL prompt.");
+                //TODO Your database operation implementation goes here
+                //TODO Add your code to perform the desired database operation
+                //TODO For example, you can interact with the database using the `diesel` crate or execute SQL queries using the `postgres` crate.
+            } else {
+                eprintln!("Failed to execute psql command.");
+            }
+        }
+        Err(err) => {
+            eprintln!("Failed to execute psql command: {}", err);
+        }
+    }
+}
+
+/// Checks if the server instance is valid by executing the "pg_ctl status" command.
+/// Returns true if the server is active, false otherwise.
+fn server_is_active(config: &Config) -> bool {
+    //~ Execute the "pg_ctl status" command to check server status
+    let cmd_output = Command::new("pg_ctl")
+        .arg("status")
+        .arg("-D")
+        .arg(&config.db_data)
+        .output()
+        .expect("Failed to execute pg_ctl");
+
+    //~ Convert the command output to a string
+    let cmd_output_str = String::from_utf8_lossy(&cmd_output.stdout);
+
+    //~ Check if the output contains "PID" to determine server validity
+    cmd_output_str.contains("PID")
+}
+
+/// Checks if the server is initialized by validating the PGDATA directory.
+/// If the path does not exist or 'postgresql.conf' missing, returns false.
+fn server_is_initialized(config: &Config) -> bool {
+    let path = Path::new(&config.db_data);
+    let file = path.join("postgresql.conf");
+    file.exists()
+}
