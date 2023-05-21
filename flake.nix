@@ -30,9 +30,6 @@
           cargo-watch
           cargo-generate
           rust-script
-          clang
-          libclang
-          cmakeMinimal
 
           #/> SQL <\#
           postgresql_15
@@ -119,9 +116,9 @@
           # IDE
           versions
           printf "\n"
-          pSQLer --start
+          # pSQLer --start
           printf "\n"
-          CrunR
+          # CrunR
         '';
       };
     });
