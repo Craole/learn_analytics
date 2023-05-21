@@ -38,9 +38,28 @@
           #/> Tools <\#
           exa
           ripgrep
-          starship
+          jupyter
+          evcxr
+          gnome.seahorse
+          gnome.gnome-keyring
+          gnome.libgnome-keyring
         ];
         shellHook = ''
+          #/> Authentication <\#
+          # see https://unix.stackexchange.com/a/295652/332452
+          #source /etc/X11/xinit/xinitrc.d/50-systemd-user.sh
+          systemctl --user import-environment DISPLAY XAUTHORITY
+          if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+              dbus-update-activation-environment DISPLAY XAUTHORITY
+          fi
+
+          # see https://wiki.archlinux.org/title/GNOME/Keyring#xinitrc
+          eval $(gnome-keyring-daemon --start)
+          export SSH_AUTH_SOCK
+
+          # see https://github.com/NixOS/nixpkgs/issues/14966#issuecomment-520083836
+          mkdir -p "$HOME"/.local/share/keyrings
+
           #/> Bin <\#
           Ccheck() { cargo check -- "$@" ;}
           Crun() { cargo run -- "$@" ;}
@@ -85,10 +104,16 @@
             sqlx --version
           }
           pSQLer() { rust-script bin/psqler.rs "$@" ;}
+          IDE() {
+            seahorse &
+            code .
+            jupyter notebook --no-browser
+          }
           # rust-script bin/psqler --start
           # rust-script bin/psqler
 
           #/> Autorun <\#
+          IDE
           versions
           printf "\n"
           pSQLer --start
