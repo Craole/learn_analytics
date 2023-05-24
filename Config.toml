@@ -1,0 +1,27 @@
+[verbosity]
+level = "verbose" #[verbose, normal, quiet]
+
+[Server]
+PGDATA = "data"
+PGLOG = "log/PostgreSQL.log"
+PGHOST = "localhost"
+PGPORT = 5321
+PGDATABASE = "postgres"
+
+[Projects]
+[Projects.PRJ1]
+DB = "nba"
+DIR = "src/nba"
+DATA = "assets/nba/data/"
+
+[Projects.PRJ2]
+DB = "world"
+DIR = "src/world"
+INIT = "assets/world.sql"
+SOURCE = "https://mysqlcode.com/wp-content/uploads/2023/01/world.zip"
+
+
+[DatabaseURL]
+DB_URL = "postgres://$PGUSER@$PGHOST:$PGPORT/bookstore"
+DB_URL_PRJ1 = "postgres://$PGUSER@$PGHOST:$PGPORT/$PRJ1_DB"
+DB_URL_PRJ2 = "postgres://$PGUSER@$PGHOST:$PGPORT/$PRJ2_DB"

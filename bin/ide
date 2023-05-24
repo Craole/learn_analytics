@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# seahorse &
+code "$@"
+# jupyter notebook --no-browser

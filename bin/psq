@@ -1,0 +1,83 @@
+#!/usr/bin/env rust-script
+//! ```cargo
+//! [dependencies]
+//! clap = { version = "4.2.1", features = ["derive"] }
+//! ```
+#![allow(unused_imports, unused_variables)]
+extern crate clap;
+
+// use std::ffi::OsStr;
+// use std::ffi::OsString;
+use std::path::PathBuf;
+
+use clap::{Args, Parser, Subcommand, ValueEnum};
+
+/// A PostgreSQL Manager
+#[derive(Debug, Parser)]
+#[command(name = "psq")]
+#[command(author = "Craole", version = "1.0", about = "A PostgreSQL Manager", long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Manage server via pg_sql
+    #[command(arg_required_else_help = true)]
+    Server {
+        // Require a path for the data directory
+        #[arg(required = true)]
+        init: ServerInitArgs,
+        // start: ServerInitArgs,
+        // stop: Option<String>,
+        // drop: Option<String>,
+        // reset: Option<String>,
+    },
+}
+
+#[derive(Debug, Clone,Args)]
+struct ServerInitArgs {
+    #[arg(short, long)]
+    data: Vec<PathBuf>,
+    // log: Vec<PathBuf>,
+}
+
+// #[derive(Debug, Subcommand)]
+// enum StashCommands {
+//     Push(StashPushArgs),
+//     Pop { stash: Option<String> },
+//     Apply { stash: Option<String> },
+// }
+
+// #[derive(Debug, Args)]
+// struct ServerStartArgs {
+//     #[arg(short, long)]
+//     data: Vec<PathBuf>,
+//     log: Vec<PathBuf>,
+// }
+
+fn main() {
+    let cli = Cli::parse();
+
+    match cli.debug {
+        0 => println!("Debug mode is off"),
+        1 => println!("Debug mode is kind of on"),
+        2 => println!("Debug mode is on"),
+        _ => println!("Don't be crazy"),
+    // You can check for the existence of subcommands, and if found use their
+    // matches just as you would the top level cmd
+    match &cli.command {
+        Commands::Server {
+            init,
+            // start,
+            // stop,
+            // drop,
+            // reset,
+        } => {
+            println!("'Server' was used, subcommand: {init:?}")
+        }
+    }
+
+}

@@ -1,13 +1,5 @@
-[Workspace]
-name = "Data Analytics Portfolio"
-workspace = "."
-bin = "bin"
-log = "log"
-src = "src"
-assets = "assets"
-
 [verbosity]
-level = "verbose"
+level = "Verbose" #[verbose, normal, quiet]
 
 [Projects]
 [Projects.PRJ1]
@@ -22,12 +14,11 @@ INIT = "assets/world.sql"
 SOURCE = "https://mysqlcode.com/wp-content/uploads/2023/01/world.zip"
 
 [Server]
-DATA = "data"
-LOG = "log/PostgreSQL.log"
-HOST = "localhost"
-PORT = "5321"
-USER = "$USER"
-DB = "postgres"
+PGDATA = "data"
+PGLOG = "log/PostgreSQL.log"
+PGHOST = "localhost"
+PGPORT = 5321
+PGDATABASE = "postgres"
 
 [DatabaseURL]
 DB_URL = "postgres://$PGUSER@$PGHOST:$PGPORT/bookstore"

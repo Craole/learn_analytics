@@ -1,5 +1,5 @@
 [package]
-name = "data_analytics_portfolio"
+name = "bi_portfolio"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,14 +7,16 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.27.0", features = ["full"] }
-sqlx = { version = "0.6.3", features = ["runtime-tokio-rustls", "postgres", "macros"] }
+sqlx = { version = "0.6.3", features = [
+  "runtime-tokio-rustls",
+  "postgres",
+  "macros",
+] }
+clap = { version = "4.2.1", features = ["derive"] }
+users = "0.11.0"
 # walkdir = "2.3.3"
 # prettytable = "0.10.0"
-# users = "0.11.0"
-# toml = "0.7.3"
+toml = "0.7.3"
 # polars = { version = "0.28.0", features = ["lazy", "describe", "sql"] }
-# dotenv = "0.15.0"
 # chrono = "0.4.24"
-# clap = "4.2.1"
-# clap = "2.33.0"
 # sysinfo = "0.28.4"

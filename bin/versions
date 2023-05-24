@@ -1,0 +1,9 @@
+#!/bin/sh
+
+# rustc -vV
+rustc --version
+cargo --version
+rust-script --version
+psql --version
+sqlx --version
+printf "\n"
