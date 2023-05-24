@@ -65,6 +65,7 @@
           # printf "\n"
           # CrunQ
           # ide .
+          cargo run --quiet
         '';
       };
     });
