@@ -61,6 +61,7 @@
             [ -d bin ] && rust-script bin/autostart
           }
           #/> Autorun <\#
+          export NIXPKGS_ALLOW_UNFREE=1
           type rust-sctipt >/dev/null 2>&1 &&
             [ -d bin ] && rust-script bin/autostart
           # xoxo bin
