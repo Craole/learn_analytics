@@ -23,7 +23,7 @@
       };
       vscode-with-extensions = pkgs.vscode-with-extensions.override {
         extensions = with pkgs.vscode-with-extensions.extensions; [
-          vscode-icons-team.vscode-icons
+          # vscode-icons-team.vscode-icons
         ];
       };
     in {
