@@ -6,7 +6,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
   };
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, nix-vscode-extensions,  ... }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, nix-vscode-extensions, ... }:
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
         (import rust-overlay)
@@ -23,7 +23,7 @@
       };
       vscode-with-extensions = pkgs.vscode-with-extensions.override {
         extensions = with pkgs.vscode-with-extensions.extensions; [
-          # vscode-icons-team.vscode-icons
+          "vscode-icons-team.vscode-icons"
         ];
       };
     in {
