@@ -18,24 +18,23 @@
           allowAliases = true;
         };
       };
-      vscodeWithExtensions = pkgs.vscode-with-extensions.override {
-        vscodeExtensions = with pkgs.vscode-extensions; [
-          matklad.rust-analyzer
-          # eamodio.gitlens
-          bbenoist.nix
-          vadimcn.vscode-lldb
-          tamasfe.even-better-toml
-        ]
-          ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
-            {
-              name = "roc-lang-support";
-              publisher = "benjamin-thomas";
-              version = "0.0.4";
-              # keep this sha for the first run, nix will tell you the correct one to change it to
-              sha256 = "sha256-mabNegZ+XPQ6EIHFk6jz2mAPLHAU6Pm3w0SiFB7IE+s=";
-            }
-          ];
-      };
+      vscodeExtensions = with pkgs.vscode-extensions; [
+        matklad.rust-analyzer
+        # eamodio.gitlens
+        bbenoist.nix
+        vadimcn.vscode-lldb
+        tamasfe.even-better-toml
+      ]
+        ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+          {
+            name = "roc-lang-support";
+            publisher = "benjamin-thomas";
+            version = "0.0.4";
+            # keep this sha for the first run, nix will tell you the correct one to change it to
+            sha256 = "sha256-mabNegZ+XPQ6EIHFk6jz2mAPLHAU6Pm3w0SiFB7IE+s=";
+          }
+        ];
+
     in {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
@@ -55,7 +54,8 @@
           grafana
 
           #/> Tools <\#
-          vscodeWithExtensions
+          pkgs.vscode
+          (pkgs.vscode-extensions.withExtensions vscodeExtensions)
           exa
           ripgrep
           # jupyter
@@ -67,3 +67,4 @@
       };
     });
 }
+
