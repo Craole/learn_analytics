@@ -1,4 +1,3 @@
-
 {
   description = "Data Analytics Portfolio Flake";
   inputs = {
@@ -11,9 +10,6 @@
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
         (import rust-overlay)
-        (self: super: {
-          rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
-        })
       ];
       pkgs = import nixpkgs {
         inherit system overlays;
@@ -22,18 +18,29 @@
           allowAliases = true;
         };
       };
-      vscode-with-extensions = pkgs.vscode-with-extensions.override {
-        extensions = [
-          # Add your desired extensions here
-          "ms-python.python"
-          "ms-toolsai.jupyter"
-        ];
+      vscodeWithExtensions = pkgs.vscode-with-extensions.override {
+        vscodeExtensions = with pkgs.vscode-extensions; [
+          matklad.rust-analyzer
+          # eamodio.gitlens
+          bbenoist.nix
+          vadimcn.vscode-lldb
+          tamasfe.even-better-toml
+        ]
+          ++ pkgs.vscode-utils.extensionsFromVscodeMarketplace [
+            {
+              name = "roc-lang-support";
+              publisher = "benjamin-thomas";
+              version = "0.0.4";
+              # keep this sha for the first run, nix will tell you the correct one to change it to
+              sha256 = "sha256-mabNegZ+XPQ6EIHFk6jz2mAPLHAU6Pm3w0SiFB7IE+s=";
+            }
+          ];
       };
     in {
-      devShells.default = pkgs.mkShell {
-        packages = with pkgs; [
+      devShell = pkgs.mkShell {
+        buildInputs = with pkgs; [
           #/> Rust <\#
-          rustToolchain
+          rust-bin
           openssl
           pkg-config
           cargo-edit
@@ -48,7 +55,7 @@
           grafana
 
           #/> Tools <\#
-          vscode-with-extensions
+          vscodeWithExtensions
           exa
           ripgrep
           # jupyter
@@ -57,30 +64,6 @@
           gnome.gnome-keyring
           gnome.libgnome-keyring
         ];
-        shellHook = ''
-          xoxo() {
-            [ -d "$1" ] && {
-              PATH="$1:$PATH"
-              find "$1" -type f ! -executable -exec chmod +x {} \;
-            }
-          }
-
-          rsBIN() {
-            type rust-sctipt >/dev/null 2>&1 &&
-            [ -d bin ] && rust-script bin/autostart
-          }
-          #/> Autorun <\#
-          type rust-sctipt >/dev/null 2>&1 &&
-            [ -d bin ] && rust-script bin/autostart
-          # xoxo bin
-          # versions
-          # pSQLer --start
-          # printf "\n"
-          # CrunQ
-          # ide .
-          // cargo run --quiet
-          code .
-        '';
       };
     });
 }
