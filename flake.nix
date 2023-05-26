@@ -42,7 +42,7 @@
           #/> Data <\#
           postgresql_15
           sqlx-cli
-          surrealdb
+#          surrealdb
           grafana
 
           #/> Tools <\#
