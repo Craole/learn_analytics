@@ -11,6 +11,7 @@
     nixpkgs,
     flake-utils,
     rust-overlay,
+    nix-vscode-extensions,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
@@ -32,14 +33,16 @@
           cargo-generate
           rust-script
 
-          #/> SQL <\#
+          #/> Data <\#
           postgresql_15
           sqlx-cli
+          surrealdb
+          grafana
 
           #/> Tools <\#
+          vscode-with-extensions
           exa
           ripgrep
-          jupyter
           evcxr
           gnome.seahorse
           gnome.gnome-keyring
