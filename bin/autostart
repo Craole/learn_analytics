@@ -7,12 +7,13 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    /// Greet the current user
+    // Greet the current user
     hello();
 
-    /// Update the PATH Variabl;
-    let bin = get_bin_directory();
-    update_path(&bin);
+    // Launch vsCode is it's not runnint
+    // Update the PATH Variabl;
+    // let bin = get_bin_directory();
+    // update_path(&bin);
 }
 
 fn hello() {
@@ -21,6 +22,22 @@ fn hello() {
     println!("Welcome {}. Let's do this!", capitalized_username);
 }
 
+    use std::process::Command;
+
+    fn main() {
+        let mut vscode_running = false;
+
+        for p in Command::new("pgrep").output().unwrap().stdout {
+            if p.starts_with("code") {
+                vscode_running = true;
+                break;
+            }
+        }
+
+        if !vscode_running {
+            Command::new("code").spawn().unwrap();
+        }
+    }
 fn capitalize_first_letter(username: &str) -> String {
     let mut chars = username.chars();
     match chars.next() {
