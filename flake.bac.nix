@@ -5,9 +5,15 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
     nix-vscode-extensions.url = "github:nix-community/nix-vscode-extensions";
-    vscode-icons-team-vscode-icons.url = "github:vscode-icons-team/vscode-icons";
   };
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, nix-vscode-extensions, vscode-icons-team-vscode-icons, ... }:
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    rust-overlay,
+    nix-vscode-extensions,
+    ...
+  }:
     flake-utils.lib.eachDefaultSystem (system: let
       overlays = [
         (import rust-overlay)
@@ -21,12 +27,7 @@
           allowUnfree = true;
           allowAliases = true;
         };
-      };
-      vscode-with-extensions = pkgs.vscode-with-extensions.override {
-        extensions = with pkgs.vscode-with-extensions.extensions; [
-          vscode-icons-team.vscode-icons
-        ];
-      };
+       };
     in {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
