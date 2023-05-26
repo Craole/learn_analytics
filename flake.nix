@@ -1,3 +1,4 @@
+
 {
   description = "Data Analytics Portfolio Flake";
   inputs = {
@@ -22,8 +23,10 @@
         };
       };
       vscode-with-extensions = pkgs.vscode-with-extensions.override {
-        extensions = with pkgs.vscode-with-extensions.extensions; [
-          "vscode-icons-team.vscode-icons"
+        extensions = [
+          # Add your desired extensions here
+          "ms-python.python"
+          "ms-toolsai.jupyter"
         ];
       };
     in {
