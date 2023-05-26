@@ -20,7 +20,13 @@
           rustToolchain = super.rust-bin.fromRustupToolchainFile ./rust-toolchain;
         })
       ];
-      pkgs = import nixpkgs {inherit system overlays;};
+      pkgs = import nixpkgs {
+        inherit system overlays;
+        config = {
+          allowUnfree = true;
+          allowAliases = true; 
+        };
+       };
     in {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
@@ -36,7 +42,7 @@
           #/> Data <\#
           postgresql_15
           sqlx-cli
-#          surrealdb
+          surrealdb
           grafana
 
           #/> Tools <\#
