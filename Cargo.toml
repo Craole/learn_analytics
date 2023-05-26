@@ -3,8 +3,6 @@ name = "bi_portfolio"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 tokio = { version = "1.27.0", features = ["full"] }
 sqlx = { version = "0.6.3", features = [
@@ -14,9 +12,9 @@ sqlx = { version = "0.6.3", features = [
 ] }
 clap = { version = "4.2.1", features = ["derive"] }
 users = "0.11.0"
+toml = "0.7.3"
 # walkdir = "2.3.3"
 # prettytable = "0.10.0"
-toml = "0.7.3"
 # polars = { version = "0.28.0", features = ["lazy", "describe", "sql"] }
 # chrono = "0.4.24"
 # sysinfo = "0.28.4"

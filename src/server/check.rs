@@ -1,55 +1,115 @@
-use crate::config::ConfigVars;
-use std::process::{Command, Output};
+use crate::{
+    app::{
+        config::{ConfigVars, Verbosity},
+        output::FunctionOutput,
+    },
+    tools::get,
+};
+use std::process::{Command, ExitCode, Output};
 
 /// Retrieves the status of the server by executing the "pg_ctl status" command.
 ///
-/// Returns:
-/// - `Ok(Output)`: The output of the command if successful.
+/// # Arguments
+/// - `app`: A mutable reference to the `App` struct.
+///
+/// # Returns
+/// - `Ok(FunctionOutput)`: The output of the command if successful.
 /// - `Err(Box<dyn std::error::Error>)`: An error if the command execution fails.
-pub fn status() -> Result<Output, Box<dyn std::error::Error>> {
-    // Create a ConfigVars instance
-    let config_vars = ConfigVars::new()?; // Retrieve the configuration variables
+pub fn status() -> Result<(FunctionOutput<'static>, i32), Box<dyn std::error::Error>> {
+    let config = ConfigVars::new()?; // Retrieve the configuration variables
 
     // Execute the "pg_ctl status" command to check server status
     let cmd_output = Command::new("pg_ctl")
         .arg("status")
         .arg("-D")
-        .arg(config_vars.pg_data.as_deref().unwrap()) // Accessing pg_data field from ConfigVars
+        .arg(config.pg_data.as_deref().unwrap()) // Accessing pg_data field from ConfigVars
         .output()?; // Execute the command and capture the output
 
-    Ok(cmd_output) // Return the command output
+    let exit_code = cmd_output.status.code().unwrap_or(0); // Get the status code
+
+    // Determine the status message based on the status code
+    let status = if exit_code == 0 {
+        "🚀 Server Active"
+    } else {
+        "💀 Server Inactive"
+    };
+
+    // Create the appropriate FunctionOutput based on the verbosity level
+    let function_output = match config.get_verbosity() {
+        Verbosity::Verbose => FunctionOutput::Verbose {
+            cmd_output,
+            custom_msg: status,
+            // exit_code,
+        },
+        Verbosity::Normal => FunctionOutput::Normal {
+            custom_msg: status,
+            // exit_code,
+        },
+        Verbosity::Quiet => FunctionOutput::Quiet {},
+    };
+
+    Ok((function_output, exit_code))
 }
 
-/// Checks if the server is active.
-///
-/// Returns:
-/// - `true` if the server is active.
-/// - `false` if the server is inactive or an error occurred.
-pub fn is_active() -> bool {
-    // Get the status output
-    let result = status().unwrap();
+// /// Checks if the data directory exists and contains the specified file.
+// ///
+// /// # Arguments
+// /// - `app`: A mutable reference to the `App` struct.
+// ///
+// /// # Returns
+// /// - `Ok((0, "Data Initialized"))` if the data directory and file exist.
+// /// - `Ok((1, "Data Invalid"))` if the data directory exists but the file is missing.
+// /// - `Ok((2, "Data Missing"))` if the data directory does not exist.
+// pub fn data_status() -> Result<(i32, Option<&'static str>), Box<dyn std::error::Error>> {
+//     // Retrieve the ConfigVars instance
+//     let config = ConfigVars::new()?;
 
-    // Get the exit code
-    let exit_code = result.status.code().unwrap_or(-1);
+//     // Get the data directory path
+//     let data_dir = match config.pg_data.as_deref() {
+//         Some(dir) => dir,
+//         None => return Ok((2, Some("Data Missing"))), // Data directory is missing
+//     };
 
-    // Return true if the exit code is 0 (active), false otherwise
-    exit_code == 0
-}
+//     // Define the file to check
+//     let valid_file = "postgresql.conf";
+
+//     // Construct the path to the target file
+//     let file_path = std::path::Path::new(data_dir).join(valid_file);
+
+//     // Check if the target file exists
+//     let data_status = if file_path.exists() {
+//         (0, Some("Data Initialized"))
+//     } else {
+//         (1, Some("Data Invalid"))
+//     };
+
+//     Ok(data_status)
+// }
 
 /// Checks if the data directory exists and contains the specified file.
 ///
-/// Returns:
-/// - `Ok((0, "Data Initialized"))` if the data directory and file exist.
-/// - `Ok((1, "Data Invalid"))` if the data directory exists but the file is missing.
-/// - `Ok((2, "Data Missing"))` if the data directory does not exist.
-pub fn data_status() -> Result<(i32, Option<&'static str>), Box<dyn std::error::Error>> {
+/// # Arguments
+/// - `app`: A mutable reference to the `App` struct.
+///
+/// # Returns
+/// - `Ok(FunctionOutput)`: The output of the command if successful.
+/// - `Err(Box<dyn std::error::Error>)`: An error if the command execution fails.
+pub fn data_status() -> Result<(FunctionOutput<'static>, i32), Box<dyn std::error::Error>> {
     // Retrieve the ConfigVars instance
-    let config_vars = ConfigVars::new()?;
+    let config = ConfigVars::new()?;
 
     // Get the data directory path
-    let data_dir = match config_vars.pg_data.as_deref() {
+    let data_dir = match config.pg_data.as_deref() {
         Some(dir) => dir,
-        None => return Ok((2, Some("Data Missing"))), // Data directory is missing
+        None => {
+            return Ok((
+                FunctionOutput::Verbose {
+                    cmd_output: Output::default(),
+                    custom_msg: "Data Missing",
+                },
+                2,
+            ))
+        } // Data directory is missing
     };
 
     // Define the file to check
@@ -59,25 +119,17 @@ pub fn data_status() -> Result<(i32, Option<&'static str>), Box<dyn std::error::
     let file_path = std::path::Path::new(data_dir).join(valid_file);
 
     // Check if the target file exists
-    if file_path.exists() {
-        Ok((0, Some("Data Initialized")))
+    let data_status = if file_path.exists() {
+        FunctionOutput::Verbose {
+            cmd_output: Output::default(),
+            custom_msg: "Data Initialized",
+        }
     } else {
-        Ok((1, Some("Data Invalid")))
-    }
-}
+        FunctionOutput::Verbose {
+            cmd_output: Output::default(),
+            custom_msg: "Data Invalid",
+        }
+    };
 
-/// Checks if the data directory is initialized.
-///
-/// Returns:
-/// - `true` if the data directory is initialized (exit code is 0).
-/// - `false` if the data directory is not initialized (exit code is not 0).
-pub fn is_initialized() -> bool {
-    // Get the status output
-    let result = status().unwrap();
-
-    // Get the exit code
-    let exit_code = result.status.code().unwrap_or(-1);
-
-    // Return true if the exit code is 0 (active), false otherwise
-    exit_code == 0
+    Ok((data_status, 0))
 }
